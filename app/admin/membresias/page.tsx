@@ -1,0 +1,335 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Search,
+  Calendar,
+  Ticket,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import type { Membresia } from "@/lib/types";
+import { MembresiaDialog } from "@/components/membresia-dialog";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+export default function MembresiasPage() {
+  const [membresias, setMembresias] = useState<Membresia[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("todas");
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMembresia, setEditingMembresia] = useState<Membresia | null>(
+    null
+  );
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { toast } = useToast();
+
+  const loadMembresias = async () => {
+    setIsLoading(true);
+    try {
+      const data = await api.getMembresias({
+        search: searchTerm,
+        estado: estadoFilter,
+      });
+      // Adaptar IDs para evitar errores de "key"
+      const adaptedData = data.map((m: any) => ({
+        ...m,
+        id: m.id.toString(),
+        socio: m.socio
+          ? { ...m.socio, id: m.socio.idpersona.toString() }
+          : null,
+        plan: m.plan ? { ...m.plan, id: m.plan.idservicio.toString() } : null,
+      }));
+      setMembresias(adaptedData);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudieron cargar las membresías",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMembresias();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm, estadoFilter]);
+
+  const handleSave = async (formData: any) => {
+    try {
+      if (editingMembresia) {
+        await api.updateMembresia(editingMembresia.id, formData);
+        toast({
+          title: "Actualizado",
+          description: "Membresía actualizada correctamente.",
+        });
+      } else {
+        await api.createMembresia(formData);
+        toast({
+          title: "Asignado",
+          description: "El plan se ha asignado al socio.",
+        });
+      }
+      loadMembresias();
+      setIsDialogOpen(false);
+      setEditingMembresia(null);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error.message || "Ocurrió un error al procesar la solicitud",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.deleteMembresia(deleteId);
+      toast({
+        title: "Eliminado",
+        description: "La membresía ha sido eliminada.",
+      });
+      loadMembresias();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar.",
+      });
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
+  const getStatusBadge = (estado: Membresia["estado"]) => {
+    switch (estado) {
+      case "activa":
+        return (
+          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
+            Activa
+          </Badge>
+        );
+      case "vencida":
+        return <Badge variant="destructive">Vencida</Badge>;
+      case "por_vencer":
+        return (
+          <Badge
+            variant="outline"
+            className="text-amber-600 border-amber-200 bg-amber-50"
+          >
+            Por Vencer
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{estado}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Membresías</h1>
+          <p className="text-sm text-muted-foreground">
+            Control y seguimiento de planes asignados a socios
+          </p>
+        </div>
+        <Button onClick={() => setIsDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nueva Membresía
+        </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por socio..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2">
+          {["todas", "activa", "vencida", "cancelada"].map((e) => (
+            <Button
+              key={e}
+              variant={estadoFilter === e ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEstadoFilter(e)}
+              className="capitalize"
+            >
+              {e}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Socio</TableHead>
+                <TableHead>Plan / Servicio</TableHead>
+                <TableHead>Vencimiento / Créditos</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      Cargando membresías...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : membresias.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No hay membresías que coincidan con la búsqueda.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                membresias.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>
+                      <div className="font-medium">{m.socio?.nombre}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {m.socio?.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {m.tipo === "creditos" ? (
+                          <Ticket className="h-4 w-4 text-blue-500" />
+                        ) : (
+                          <Calendar className="h-4 w-4 text-orange-500" />
+                        )}
+                        <span>{m.plan?.nombre}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {m.tipo === "fecha" ? (
+                        <div className="text-sm">
+                          {m.fecha_fin
+                            ? format(new Date(m.fecha_fin), "dd/MM/yyyy")
+                            : "-"}
+                          <span className="text-xs text-muted-foreground block">
+                            Vence
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-sm">
+                          {m.creditos_restantes} / {m.creditos_totales}
+                          <span className="text-xs text-muted-foreground block">
+                            Clases disp.
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(m.estado)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingMembresia(m);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => setDeleteId(m.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <MembresiaDialog
+        open={isDialogOpen}
+        onOpenChange={(val) => {
+          setIsDialogOpen(val);
+          if (!val) setEditingMembresia(null);
+        }}
+        membresia={editingMembresia || undefined}
+        onSave={handleSave}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar membresía?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el registro de membresía del socio.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
