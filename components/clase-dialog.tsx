@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import type React from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,102 +9,168 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2 } from "lucide-react"
-import { mockInstructores } from "@/lib/mock-admin-data"
-import type { Clase } from "@/lib/types"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import type { Clase, Instructor } from "@/lib/types";
 
 interface ClaseDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  clase?: Clase
-  onSave: (clase: Clase | Omit<Clase, "id" | "inscritos">) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  clase?: Clase;
+  onSave: () => void;
 }
 
-const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+const diasSemana = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+];
 
-export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogProps) {
-  const [isLoading, setIsLoading] = useState(false)
+export function ClaseDialog({
+  open,
+  onOpenChange,
+  clase,
+  onSave,
+}: ClaseDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [instructores, setInstructores] = useState<Instructor[]>([]);
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     nombre: "",
-    instructorId: "",
-    diaSemana: [] as string[],
-    horaInicio: "",
-    duracion: "",
-    cupoMaximo: "",
-    descripcion: "",
+    idservicio: "",
+    id_coach: "",
+    dias_semana: [] as string[],
+    hora_inicio: "",
+    hora_fin: "",
+    duracion_minutos: "60",
+    cupo_maximo: "20",
     estado: "activa" as Clase["estado"],
-  })
+  });
+
+  useEffect(() => {
+    if (open) {
+      loadData();
+    }
+  }, [open]);
+
+  const loadData = async () => {
+    try {
+      const data = await api.getInstructores();
+      // Adaptar datos como se hace en la página de instructores
+      const adapted = data.map((item: any) => ({
+        id: String(item.id),
+        nombre: item.nombre,
+        email: item.email,
+        telefono: item.telefono,
+        estado:
+          (item.estado || "").toLowerCase() === "activo"
+            ? "activo"
+            : "inactivo",
+      })) as Instructor[];
+      setInstructores(adapted);
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+    }
+  };
 
   useEffect(() => {
     if (clase) {
       setFormData({
         nombre: clase.nombre,
-        instructorId: clase.instructorId,
-        diaSemana: clase.diaSemana,
-        horaInicio: clase.horaInicio,
-        duracion: String(clase.duracion),
-        cupoMaximo: String(clase.cupoMaximo),
-        descripcion: clase.descripcion,
+        idservicio: clase.idservicio || "",
+        id_coach: clase.id_coach,
+        dias_semana: clase.dias_semana.split(","),
+        hora_inicio: clase.hora_inicio,
+        hora_fin: clase.hora_fin,
+        duracion_minutos: String(clase.duracion_minutos),
+        cupo_maximo: String(clase.cupo_maximo),
         estado: clase.estado,
-      })
+      });
     } else {
       setFormData({
         nombre: "",
-        instructorId: "",
-        diaSemana: [],
-        horaInicio: "",
-        duracion: "",
-        cupoMaximo: "",
-        descripcion: "",
+        idservicio: "",
+        id_coach: "",
+        dias_semana: [],
+        hora_inicio: "",
+        hora_fin: "",
+        duracion_minutos: "60",
+        cupo_maximo: "20",
         estado: "activa",
-      })
+      });
     }
-  }, [clase, open])
+  }, [clase, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      const dataToSave = {
+        nombre: formData.nombre,
+        idservicio: formData.idservicio || null,
+        id_coach: formData.id_coach,
+        dias_semana: formData.dias_semana.join(","),
+        hora_inicio: formData.hora_inicio,
+        hora_fin: formData.hora_fin,
+        duracion_minutos: Number(formData.duracion_minutos),
+        cupo_maximo: Number(formData.cupo_maximo),
+        estado: formData.estado,
+      };
+      if (clase) {
+        await api.updateClase(clase.id, dataToSave);
+        toast({
+          title: "Clase actualizada",
+          description: "El horario se actualizó correctamente.",
+        });
+      } else {
+        await api.createClase(dataToSave);
+        toast({
+          title: "Clase creada",
+          description: "El horario ha sido registrado exitosamente.",
+        });
+      }
 
-    const instructor = mockInstructores.find((i) => i.id === formData.instructorId)
-
-    const claseData = {
-      nombre: formData.nombre,
-      instructorId: formData.instructorId,
-      instructorNombre: instructor?.nombre || "",
-      diaSemana: formData.diaSemana,
-      horaInicio: formData.horaInicio,
-      duracion: Number(formData.duracion),
-      cupoMaximo: Number(formData.cupoMaximo),
-      descripcion: formData.descripcion,
-      estado: formData.estado,
+      onSave();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo guardar la clase",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    if (clase) {
-      onSave({ ...claseData, id: clase.id, inscritos: clase.inscritos })
-    } else {
-      onSave(claseData)
-    }
-
-    setIsLoading(false)
-  }
+  };
 
   const toggleDia = (dia: string) => {
     setFormData({
       ...formData,
-      diaSemana: formData.diaSemana.includes(dia)
-        ? formData.diaSemana.filter((d) => d !== dia)
-        : [...formData.diaSemana, dia],
-    })
-  }
+      dias_semana: formData.dias_semana.includes(dia)
+        ? formData.dias_semana.filter((d) => d !== dia)
+        : [...formData.dias_semana, dia],
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,33 +178,39 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
         <DialogHeader>
           <DialogTitle>{clase ? "Editar Clase" : "Nueva Clase"}</DialogTitle>
           <DialogDescription>
-            {clase ? "Actualiza la información de la clase" : "Completa los datos para crear una nueva clase"}
+            {clase
+              ? "Actualiza la información de la clase"
+              : "Completa los datos para crear una nueva clase"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="nombre">Nombre de la clase *</Label>
+            <Label htmlFor="nombre">Nombre de la Clase *</Label>
             <Input
               id="nombre"
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              placeholder="CrossFit, Yoga, Spinning..."
+              onChange={(e) =>
+                setFormData({ ...formData, nombre: e.target.value })
+              }
+              placeholder="Ej: Yoga Mañana, CrossFit Intensivo..."
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="instructorId">Instructor *</Label>
+            <Label htmlFor="id_coach">Instructor *</Label>
             <Select
-              value={formData.instructorId}
-              onValueChange={(value) => setFormData({ ...formData, instructorId: value })}
+              value={formData.id_coach}
+              onValueChange={(value) =>
+                setFormData({ ...formData, id_coach: value })
+              }
             >
-              <SelectTrigger id="instructorId">
+              <SelectTrigger id="id_coach">
                 <SelectValue placeholder="Seleccionar instructor" />
               </SelectTrigger>
               <SelectContent>
-                {mockInstructores
+                {instructores
                   .filter((i) => i.estado === "activo")
                   .map((instructor) => (
                     <SelectItem key={instructor.id} value={instructor.id}>
@@ -156,7 +228,7 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
                 <div key={dia} className="flex items-center space-x-2">
                   <Checkbox
                     id={dia}
-                    checked={formData.diaSemana.includes(dia)}
+                    checked={formData.dias_semana.includes(dia)}
                     onCheckedChange={() => toggleDia(dia)}
                   />
                   <label
@@ -170,37 +242,58 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="horaInicio">Hora inicio *</Label>
+              <Label htmlFor="hora_inicio">Hora inicio *</Label>
               <Input
-                id="horaInicio"
+                id="hora_inicio"
                 type="time"
-                value={formData.horaInicio}
-                onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                value={formData.hora_inicio}
+                onChange={(e) =>
+                  setFormData({ ...formData, hora_inicio: e.target.value })
+                }
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="duracion">Duración (min) *</Label>
+              <Label htmlFor="hora_fin">Hora fin *</Label>
               <Input
-                id="duracion"
+                id="hora_fin"
+                type="time"
+                value={formData.hora_fin}
+                onChange={(e) =>
+                  setFormData({ ...formData, hora_fin: e.target.value })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="duracion_minutos">Duración (min) *</Label>
+              <Input
+                id="duracion_minutos"
                 type="number"
-                value={formData.duracion}
-                onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
+                value={formData.duracion_minutos}
+                onChange={(e) =>
+                  setFormData({ ...formData, duracion_minutos: e.target.value })
+                }
                 placeholder="60"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cupoMaximo">Cupo máximo *</Label>
+              <Label htmlFor="cupo_maximo">Cupo máximo *</Label>
               <Input
-                id="cupoMaximo"
+                id="cupo_maximo"
                 type="number"
-                value={formData.cupoMaximo}
-                onChange={(e) => setFormData({ ...formData, cupoMaximo: e.target.value })}
+                value={formData.cupo_maximo}
+                onChange={(e) =>
+                  setFormData({ ...formData, cupo_maximo: e.target.value })
+                }
                 placeholder="20"
                 required
               />
@@ -208,21 +301,12 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="descripcion">Descripción</Label>
-            <Textarea
-              id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              placeholder="Descripción de la clase..."
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="estado">Estado *</Label>
             <Select
               value={formData.estado}
-              onValueChange={(value: Clase["estado"]) => setFormData({ ...formData, estado: value })}
+              onValueChange={(value: Clase["estado"]) =>
+                setFormData({ ...formData, estado: value })
+              }
             >
               <SelectTrigger id="estado">
                 <SelectValue />
@@ -235,7 +319,12 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
@@ -254,5 +343,5 @@ export function ClaseDialog({ open, onOpenChange, clase, onSave }: ClaseDialogPr
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

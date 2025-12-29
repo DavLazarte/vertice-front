@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { mockPlanes } from "@/lib/mock-admin-data";
 import type { Socio } from "@/lib/types";
@@ -47,6 +48,8 @@ export function SocioDialog({
     fechaNacimiento: "",
     dni: "",
     foto: "",
+    crearUsuario: false,
+    password: "",
   });
 
   useEffect(() => {
@@ -59,6 +62,8 @@ export function SocioDialog({
         fechaNacimiento: socio.fechaNacimiento || "",
         dni: socio.dni || "",
         foto: socio.foto || "",
+        crearUsuario: false,
+        password: "",
       });
     } else {
       setFormData({
@@ -69,6 +74,8 @@ export function SocioDialog({
         fechaNacimiento: "",
         dni: "",
         foto: "",
+        crearUsuario: false,
+        password: "",
       });
     }
   }, [socio, open]);
@@ -180,6 +187,43 @@ export function SocioDialog({
               />
             </div>
           </div>
+
+          {!socio && (
+            <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="crearUsuario">Crear cuenta de acceso</Label>
+                  <p className="text-[0.8rem] text-muted-foreground">
+                    Permite al socio acceder con su email y contraseña
+                  </p>
+                </div>
+                <Switch
+                  id="crearUsuario"
+                  checked={formData.crearUsuario}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, crearUsuario: checked })
+                  }
+                />
+              </div>
+
+              {formData.crearUsuario && (
+                <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2">
+                  <Label htmlFor="password">Contraseña temporal *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Mínimo 8 caracteres"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required={formData.crearUsuario}
+                    minLength={8}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button

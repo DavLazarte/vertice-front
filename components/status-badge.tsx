@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils"
-import { CheckCircle2, AlertCircle, XCircle, Clock } from "lucide-react"
+import { cn } from "@/lib/utils";
+import { CheckCircle2, AlertCircle, XCircle, Clock } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: string
-  className?: string
+  status: string;
+  className?: string;
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
@@ -28,7 +28,17 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       text: "text-blue-700 dark:text-blue-400",
       icon: Clock,
     },
+    reservada: {
+      bg: "bg-blue-500/10",
+      text: "text-blue-700 dark:text-blue-400",
+      icon: Clock,
+    },
     Asistida: {
+      bg: "bg-primary/10",
+      text: "text-primary",
+      icon: CheckCircle2,
+    },
+    asistio: {
       bg: "bg-primary/10",
       text: "text-primary",
       icon: CheckCircle2,
@@ -38,10 +48,20 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       text: "text-muted-foreground",
       icon: XCircle,
     },
-  }
+    cancelada: {
+      bg: "bg-muted",
+      text: "text-muted-foreground",
+      icon: XCircle,
+    },
+    ausente: {
+      bg: "bg-destructive/10",
+      text: "text-destructive",
+      icon: XCircle,
+    },
+  };
 
-  const variant = variants[status as keyof typeof variants] || variants.Activa
-  const Icon = variant.icon
+  const variant = variants[status as keyof typeof variants] || variants.Activa;
+  const Icon = variant.icon;
 
   return (
     <span
@@ -49,11 +69,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
         variant.bg,
         variant.text,
-        className,
+        className
       )}
     >
       <Icon className="h-3 w-3" />
       {status}
     </span>
-  )
+  );
 }

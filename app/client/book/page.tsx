@@ -1,24 +1,52 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { AppHeader } from "@/components/app-header"
-import { MobileNav } from "@/components/mobile-nav"
-import { ClassCard } from "@/components/class-card"
-import { Button } from "@/components/ui/button"
-import { currentUser, mockClasses } from "@/lib/mock-data"
-import { ChevronLeft, Filter } from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { AppHeader } from "@/components/app-header";
+import { MobileNav } from "@/components/mobile-nav";
+import { ClassCard } from "@/components/class-card";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { ClassSlot } from "@/lib/types";
+import { useRequireRole } from "@/hooks/useRequireRole";
+import { ChevronLeft, Filter, Loader2 } from "lucide-react";
+import Link from "next/link";
 
 export default function BookClassPage() {
-  const [selectedModality, setSelectedModality] = useState<string>("Todos")
-  const modalities = ["Todos", "Funcional", "Bienestar", "Cardio"]
+  const { user, loading: roleLoading } = useRequireRole("gym_socio");
+  const [classes, setClasses] = useState<ClassSlot[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredClasses =
-    selectedModality === "Todos" ? mockClasses : mockClasses.filter((c) => c.modality === selectedModality)
+  useEffect(() => {
+    if (user) {
+      loadClasses();
+    }
+  }, [user]);
+
+  const loadClasses = async () => {
+    try {
+      setIsLoading(true);
+      const data = await api.getAvailableClasses();
+      setClasses(data);
+    } catch (error) {
+      console.error("Error loading classes:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (roleLoading || (user && isLoading)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-4">
-      <AppHeader userName={currentUser.name} userRole={currentUser.role} />
+    <div className="min-h-screen bg-background pb-20 md:pb-4 text-foreground">
+      <AppHeader userName={user.name} userRole="client" />
 
       <main className="container mx-auto max-w-2xl space-y-6 p-4">
         <div className="flex items-center gap-3">
@@ -28,48 +56,45 @@ export default function BookClassPage() {
             </button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Reservar Clase</h1>
-            <p className="text-sm text-muted-foreground">Encuentra tu próxima sesión</p>
-          </div>
-        </div>
-
-        {/* Filter by modality */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            <span>Filtrar por modalidad</span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {modalities.map((modality) => (
-              <Button
-                key={modality}
-                variant={selectedModality === modality ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedModality(modality)}
-                className={selectedModality !== modality ? "bg-transparent" : ""}
-              >
-                {modality}
-              </Button>
-            ))}
+            <h1 className="text-2xl font-bold text-foreground">
+              Reservar Clase
+            </h1>
+            <p className="text-sm text-primary font-medium">
+              Clases para hoy:{" "}
+              {new Date().toLocaleDateString("es-ES", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
           </div>
         </div>
 
         {/* Classes List */}
         <div className="space-y-3">
-          {filteredClasses.map((classSession) => (
-            <ClassCard key={classSession.id} classSession={classSession} showBookButton />
+          {classes.map((classSession) => (
+            <ClassCard
+              key={classSession.id}
+              classSession={classSession}
+              showBookButton
+              onBooked={loadClasses}
+            />
           ))}
         </div>
 
-        {filteredClasses.length === 0 && (
+        {classes.length === 0 && !isLoading && (
           <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <h3 className="text-lg font-semibold text-foreground">No hay clases disponibles</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Prueba cambiando el filtro de modalidad</p>
+            <h3 className="text-lg font-semibold text-foreground">
+              No hay clases disponibles
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Prueba más tarde para nuevas sesiones
+            </p>
           </div>
         )}
       </main>
 
       <MobileNav role="client" />
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -14,10 +14,10 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { useState } from "react"
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -25,28 +25,29 @@ const navItems = [
   { href: "/admin/membresias", icon: CreditCard, label: "Membresías" },
   { href: "/admin/planes", icon: Package, label: "Planes" },
   { href: "/admin/clases", icon: Calendar, label: "Clases" },
+  { href: "/admin/reservas", icon: Calendar, label: "Reservas" },
   { href: "/admin/instructores", icon: UserCheck, label: "Instructores" },
   { href: "/admin/asistencias", icon: Activity, label: "Asistencias" },
   { href: "/admin/pagos", icon: DollarSign, label: "Pagos" },
   { href: "/admin/configuracion", icon: Settings, label: "Configuración" },
-]
+];
 
 export function AdminSidebar() {
-  const pathname = usePathname()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <aside
       className={cn(
         "fixed left-0 top-16 z-30 hidden h-[calc(100vh-4rem)] border-r border-border bg-card transition-all duration-300 md:block",
-        isCollapsed ? "w-16" : "w-64",
+        isCollapsed ? "w-16" : "w-64"
       )}
     >
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-2">
             {navItems.map((item) => {
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
@@ -55,14 +56,14 @@ export function AdminSidebar() {
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
                   {!isCollapsed && <span>{item.label}</span>}
                 </Link>
-              )
+              );
             })}
           </nav>
         </div>
@@ -86,5 +87,5 @@ export function AdminSidebar() {
         </div>
       </div>
     </aside>
-  )
+  );
 }

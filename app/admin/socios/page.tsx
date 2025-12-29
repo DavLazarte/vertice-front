@@ -29,10 +29,13 @@ import {
   Eye,
   UserPlus,
   IdCard,
+  UserCheck,
+  UserCog,
 } from "lucide-react";
 import { SocioDialog } from "@/components/socio-dialog";
 import { SocioDetailDialog } from "@/components/socio-detail-dialog";
 import { MembresiaDialog } from "@/components/membresia-dialog";
+import { UserSetupDialog } from "@/components/user-setup-dialog";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Socio } from "@/lib/types";
@@ -48,6 +51,7 @@ export default function SociosPage() {
   const [deletingSocio, setDeletingSocio] = useState<Socio | null>(null);
   const [isMembresiaDialogOpen, setIsMembresiaDialogOpen] = useState(false);
   const [selectedSocioId, setSelectedSocioId] = useState<string | null>(null);
+  const [setupUserSocio, setSetupUserSocio] = useState<Socio | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -104,6 +108,8 @@ export default function SociosPage() {
         fechaNacimiento: socio.fechaNacimiento || "",
         dni: socio.dni || "",
         foto: socio.foto || "",
+        crearUsuario: (socio as any).crearUsuario || false,
+        password: (socio as any).password || "",
       });
 
       console.log("Socio creado exitosamente:", response);
@@ -263,6 +269,7 @@ export default function SociosPage() {
                 <TableHead>Plan</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Vencimiento</TableHead>
+                <TableHead className="text-center">Usuario</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -324,6 +331,23 @@ export default function SociosPage() {
                           : "Sin membresía"}
                       </span>
                     </TableCell>
+                    <TableCell className="text-center">
+                      {socio.tieneUsuario ? (
+                        <div
+                          className="flex justify-center"
+                          title="Tiene usuario asignado"
+                        >
+                          <UserCheck className="h-4 w-4 text-green-500" />
+                        </div>
+                      ) : (
+                        <div
+                          className="flex justify-center opacity-30"
+                          title="Sin usuario"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button
@@ -337,6 +361,16 @@ export default function SociosPage() {
                         >
                           <IdCard className="h-4 w-4 text-primary" />
                         </Button>
+                        {!socio.tieneUsuario && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setSetupUserSocio(socio)}
+                            title="Habilitar Acceso"
+                          >
+                            <UserPlus className="h-4 w-4 text-amber-500" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon-sm"
@@ -410,6 +444,22 @@ export default function SociosPage() {
         onOpenChange={setIsMembresiaDialogOpen}
         initialSocioId={selectedSocioId || undefined}
         onSave={handleCreateMembresia}
+      />
+
+      <UserSetupDialog
+        open={!!setupUserSocio}
+        onOpenChange={(open) => !open && setSetupUserSocio(null)}
+        socioId={setupUserSocio?.id || ""}
+        socioNombre={setupUserSocio?.nombre || ""}
+        socioEmail={setupUserSocio?.email || ""}
+        onSuccess={loadSocios}
+        onSave={async (id, email, password) => {
+          await api.createUserForSocio(id, email, password);
+          toast({
+            title: "Acceso habilitado",
+            description: `Se ha creado el usuario para ${setupUserSocio?.nombre}.`,
+          });
+        }}
       />
     </>
   );

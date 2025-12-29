@@ -49,16 +49,22 @@ export interface Plan {
 export interface Clase {
   id: string
   nombre: string
-  instructorId: string
-  instructorNombre: string
-  diaSemana: string[]
-  horaInicio: string
-  duracion: number
-  cupoMaximo: number
-  descripcion: string
-  imagen?: string
+  idservicio?: string
+  id_coach: string
+  dias_semana: string // Comma separated: "Lunes,Miércoles"
+  hora_inicio: string
+  hora_fin: string
+  duracion_minutos: number
+  cupo_maximo: number
   estado: "activa" | "cancelada"
-  inscritos: number
+  inscritos_hoy?: number
+  // Relational data for UI
+  tipo_clase?: {
+    nombre: string
+  }
+  coach?: {
+    nombre: string
+  }
 }
 
 export interface Instructor {
@@ -96,4 +102,36 @@ export interface Pago {
   estado: "pagado" | "pendiente" | "vencido"
   fecha: string
   comprobante?: string
+}
+export interface ClassSlot {
+  id: string
+  clase_id: string
+  reserva_id: string | null
+  nombre: string
+  instructor: string
+  fecha: string
+  hora: string
+  duracion: number
+  capacidad: number
+  inscritos: number
+  alumnos: string[]
+  disponibles: number
+  reservada: boolean
+  estado_clase: string
+}
+
+export interface Reserva {
+  id: string
+  id_persona: string
+  id_clase_gym: string
+  fecha_reserva: string
+  id_membresia: string
+  estado: "reservada" | "asistio" | "cancelada" | "ausente"
+  clase?: {
+    nombre: string
+    hora_inicio: string
+  }
+  persona?: {
+    nombre: string
+  }
 }

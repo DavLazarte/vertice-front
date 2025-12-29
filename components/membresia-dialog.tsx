@@ -133,21 +133,25 @@ export function MembresiaDialog({
   const getResume = () => {
     if (!selectedPlan) return null;
 
+    let resume = "";
+
     if (selectedPlan.duracion_dias) {
       const fin = addDays(
         new Date(formData.fecha_inicio),
         selectedPlan.duracion_dias
       );
-      return `Este plan es por tiempo. Vencerá el ${format(fin, "PPPP", {
+      resume += `Vencerá el ${format(fin, "PPPP", {
         locale: es,
       })}.`;
     }
 
     if (selectedPlan.creditos) {
-      return `Este plan es por créditos. Tendrá un total de ${selectedPlan.creditos} clases.`;
+      resume += ` ${resume ? "Además, tendrá" : "Tendrá"} un total de ${
+        selectedPlan.creditos
+      } clases.`;
     }
 
-    return null;
+    return resume || null;
   };
 
   return (

@@ -148,6 +148,10 @@ class ApiClient {
     });
   }
 
+  async getProfile() {
+    return this.get<{ socio: any }>("/perfil")
+  }
+
   // Instructores (reutiliza endpoints de socios)
   async getInstructores(search?: string) {
     const params = new URLSearchParams()
@@ -213,6 +217,52 @@ class ApiClient {
 
   async deleteMembresia(id: string) {
     return this.delete<{ message: string }>(`/membresias/${id}`)
+  }
+
+  // Clases
+  async getClases() {
+    return this.get<{ clases: any[] }>("/clases")
+  }
+
+  async createClase(data: any) {
+    return this.post<{ message: string; clase: any }>("/clases", data)
+  }
+
+  async updateClase(id: string, data: any) {
+    return this.put<{ message: string; clase: any }>(`/clases/${id}`, data)
+  }
+
+  async deleteClase(id: string) {
+    return this.delete<{ message: string }>(`/clases/${id}`)
+  }
+
+  // Reservas y Disponibilidad
+  async getAvailableClasses(startDate?: string, endDate?: string) {
+    const params = new URLSearchParams()
+    if (startDate) params.append("start_date", startDate)
+    if (endDate) params.append("end_date", endDate)
+    const response = await this.get<{ instancias: any[] }>(`/clases-disponibles?${params.toString()}`)
+    return response.instancias
+  }
+
+  async createReserva(data: { id_clase_gym: string; fecha_reserva: string; id_persona?: string }) {
+    return this.post<{ message: string; reserva: any }>("/reservas", data)
+  }
+
+  async getReservas(params?: { id_persona?: string; fecha?: string }) {
+    const urlParams = new URLSearchParams()
+    if (params?.id_persona) urlParams.append("id_persona", params.id_persona)
+    if (params?.fecha) urlParams.append("fecha", params.fecha)
+    const response = await this.get<{ reservas: any[] }>(`/reservas?${urlParams.toString()}`)
+    return response.reservas
+  }
+
+  async cancelReserva(id: string) {
+    return this.delete<{ message: string }>(`/reservas/${id}`)
+  }
+
+  async marcarAsistencia(data: { id_persona: string; id_clase_gym?: string; id_reserva?: string }) {
+    return this.post<{ message: string; asistencia: any }>("/asistencias", data)
   }
 }
 

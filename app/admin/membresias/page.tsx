@@ -252,23 +252,24 @@ export default function MembresiasPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {m.tipo === "fecha" ? (
-                        <div className="text-sm">
-                          {m.fecha_fin
-                            ? format(new Date(m.fecha_fin), "dd/MM/yyyy")
-                            : "-"}
-                          <span className="text-xs text-muted-foreground block">
-                            Vence
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="text-sm">
-                          {m.creditos_restantes} / {m.creditos_totales}
-                          <span className="text-xs text-muted-foreground block">
-                            Clases disp.
-                          </span>
-                        </div>
-                      )}
+                      <div className="space-y-1">
+                        {m.fecha_fin && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground mr-1">
+                              Vence:
+                            </span>
+                            {format(new Date(m.fecha_fin), "dd/MM/yyyy")}
+                          </div>
+                        )}
+                        {m.tipo === "creditos" && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground mr-1">
+                              Créditos:
+                            </span>
+                            {m.creditos_restantes} / {m.creditos_totales}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(m.estado)}</TableCell>
                     <TableCell className="text-right">

@@ -82,15 +82,12 @@ export function PlanDialog({
         precio: parseFloat(formData.precio) || 0,
         estado: formData.estado,
         tipo_servicio: "plan",
+        duracion_dias: parseInt(formData.duracion_dias) || null,
+        creditos:
+          formData.tipo_plan === "creditos"
+            ? parseInt(formData.creditos) || null
+            : null,
       };
-
-      if (formData.tipo_plan === "fecha") {
-        dataToSave.duracion_dias = parseInt(formData.duracion_dias) || 0;
-        dataToSave.creditos = null;
-      } else {
-        dataToSave.creditos = parseInt(formData.creditos) || 0;
-        dataToSave.duracion_dias = null;
-      }
 
       if (plan) {
         dataToSave.id = plan.id;
@@ -229,9 +226,9 @@ export function PlanDialog({
               </RadioGroup>
             </div>
 
-            {formData.tipo_plan === "fecha" ? (
+            <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
               <div className="space-y-2">
-                <Label htmlFor="duracion">Duración en Días *</Label>
+                <Label htmlFor="duracion">Vigencia (Días) *</Label>
                 <div className="flex gap-2">
                   <Input
                     id="duracion"
@@ -244,13 +241,14 @@ export function PlanDialog({
                         duracion_dias: e.target.value,
                       })
                     }
-                    required={formData.tipo_plan === "fecha"}
+                    required
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="h-8 px-2"
                       onClick={() =>
                         setFormData({ ...formData, duracion_dias: "30" })
                       }
@@ -261,46 +259,41 @@ export function PlanDialog({
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="h-8 px-2"
                       onClick={() =>
                         setFormData({ ...formData, duracion_dias: "90" })
                       }
                     >
                       3m
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setFormData({ ...formData, duracion_dias: "365" })
-                      }
-                    >
-                      1a
-                    </Button>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[0.7rem] text-muted-foreground">
                   Días de vigencia desde el momento de la asignación.
                 </p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="creditos">Cantidad de Créditos/Clases *</Label>
-                <Input
-                  id="creditos"
-                  type="number"
-                  min="1"
-                  value={formData.creditos}
-                  onChange={(e) =>
-                    setFormData({ ...formData, creditos: e.target.value })
-                  }
-                  required={formData.tipo_plan === "creditos"}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Número de veces que el socio puede asistir o reservar.
-                </p>
-              </div>
-            )}
+
+              {formData.tipo_plan === "creditos" && (
+                <div className="space-y-2">
+                  <Label htmlFor="creditos">
+                    Cantidad de Créditos/Clases *
+                  </Label>
+                  <Input
+                    id="creditos"
+                    type="number"
+                    min="1"
+                    value={formData.creditos}
+                    onChange={(e) =>
+                      setFormData({ ...formData, creditos: e.target.value })
+                    }
+                    required={formData.tipo_plan === "creditos"}
+                  />
+                  <p className="text-[0.7rem] text-muted-foreground">
+                    Límite de usos dentro del periodo de vigencia.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter>

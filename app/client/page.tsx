@@ -1,44 +1,113 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
 import { MobileNav } from "@/components/mobile-nav";
 import { StatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRequireRole } from "@/hooks/useRequireRole";
-import { currentUser, mockMembership, mockReservations } from "@/lib/mock-data";
-import { Calendar, CreditCard, History, User } from "lucide-react";
+import { api } from "@/lib/api";
+import { Reserva } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Calendar,
+  CreditCard,
+  History,
+  User,
+  Loader2,
+  Clock,
+  Trash2,
+  CheckCircle2,
+} from "lucide-react";
 import Link from "next/link";
 
 export default function ClientDashboardPage() {
-  const nextClass = mockReservations.find((r) => r.status === "Reservada");
-  // Solo gym_socio puede acceder
-  const { user, loading } = useRequireRole("gym_socio");
+  const [profile, setProfile] = useState<any>(null);
+  const [reservations, setReservations] = useState<Reserva[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  if (loading) {
+  // Solo gym_socio puede acceder
+  const { user, loading: roleLoading } = useRequireRole("gym_socio");
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      setIsDataLoading(true);
+      const data = await api.getProfile();
+      setProfile(data.socio);
+
+      // Cargar reservas (solo activas para hoy/futuro)
+      const resData = await api.getReservas();
+      setReservations(resData.slice(0, 3));
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  const handleCancelReservation = async (id: string) => {
+    try {
+      setIsCancelling(id);
+      await api.cancelReserva(id);
+      toast({
+        title: "Reserva cancelada",
+        description: "Tu cupo ha sido liberado correctamente.",
+      });
+      // Recargar perfil y reservas para actualizar créditos y lista
+      loadProfile();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error al cancelar",
+        description: error.message || "No se pudo cancelar la reserva.",
+      });
+    } finally {
+      setIsCancelling(null);
+    }
+  };
+
+  if (roleLoading || (user && isDataLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Cargando...</p>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-2 text-sm text-muted-foreground">
+            Cargando tu panel...
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return null;
   }
 
+  const mapStatus = (status: string) => {
+    if (status === "activo") return "Activa";
+    if (status === "vencido") return "Vencida";
+    return "Cancelada";
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-4">
-      <AppHeader userName={user.name} userRole="client" />
+    <div className="min-h-screen bg-background pb-20 md:pb-4 text-foreground">
+      <AppHeader userName={profile.nombre} userRole="client" />
 
       <main className="container mx-auto max-w-2xl space-y-6 p-4">
         {/* Welcome Section */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-foreground">
-            Hola, {currentUser.name.split(" ")[0]}
+            Hola, {profile.nombre.split(" ")[0]}
           </h1>
           <p className="text-sm text-muted-foreground">
             Bienvenido a tu panel de control
@@ -50,7 +119,7 @@ export default function ClientDashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Estado de Membresía</CardTitle>
-              <StatusBadge status={mockMembership.status} />
+              <StatusBadge status={mapStatus(profile.estado)} />
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -58,24 +127,38 @@ export default function ClientDashboardPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Plan</p>
                 <p className="font-semibold text-foreground">
-                  {mockMembership.planName}
+                  {profile.planNombre}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Modalidad</p>
                 <p className="font-semibold text-foreground">
-                  {mockMembership.modality}
+                  {profile.tipo_membresia === "creditos"
+                    ? "Por Créditos"
+                    : "Ilimitado (Tiempo)"}
                 </p>
               </div>
             </div>
+
+            {profile.tipo_membresia === "creditos" && (
+              <div className="rounded-lg bg-primary/10 p-3 border border-primary/20">
+                <p className="text-xs text-primary/80 font-medium">
+                  Créditos disponibles
+                </p>
+                <p className="text-2xl font-bold text-primary">
+                  {profile.creditos_restantes}{" "}
+                  <span className="text-sm font-normal">clases</span>
+                </p>
+              </div>
+            )}
 
             <div className="rounded-lg bg-muted p-3">
               <p className="text-xs text-muted-foreground">
                 Fecha de vencimiento
               </p>
               <p className="text-sm font-semibold text-foreground">
-                {mockMembership.endDate
-                  ? new Date(mockMembership.endDate).toLocaleDateString(
+                {profile.fechaVencimiento
+                  ? new Date(profile.fechaVencimiento).toLocaleDateString(
                       "es-ES",
                       {
                         day: "numeric",
@@ -96,48 +179,79 @@ export default function ClientDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Next Class Card */}
-        {nextClass && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Próxima Clase</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">
-                    {nextClass.className}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {nextClass.modality}
-                  </p>
-                </div>
-                <StatusBadge status={nextClass.status} />
+        {/* Próximas Clases Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Tus Próximas Clases
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {reservations.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
+                  Sin clases hoy
+                </p>
+                <p className="text-sm font-medium">
+                  No tienes reservas activas
+                </p>
+                <Link href="/client/book">
+                  <Button variant="link" size="sm" className="mt-1 h-auto p-0">
+                    Ver clases disponibles
+                  </Button>
+                </Link>
               </div>
-
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {new Date(nextClass.date).toLocaleDateString("es-ES", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
+            ) : (
+              reservations.map((reserva) => (
+                <div
+                  key={reserva.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border group"
+                >
+                  <div className="space-y-1">
+                    <p className="font-semibold text-sm leading-none">
+                      {reserva.clase?.nombre}
+                    </p>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(reserva.fecha_reserva).toLocaleDateString(
+                          "es-ES",
+                          { day: "numeric", month: "short" }
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {reserva.clase?.hora_inicio.substring(0, 5)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {reserva.estado === "asistio" ? (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 text-[10px]">
+                        Asistido
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleCancelReservation(reserva.id)}
+                        disabled={!!isCancelling}
+                      >
+                        {isCancelling === reserva.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-muted-foreground">
-                  <span>{nextClass.time}</span>
-                </div>
-              </div>
-
-              <Link href="/client/reservations">
-                <Button variant="secondary" className="w-full">
-                  Ver mis reservas
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
+              ))
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <div className="grid gap-3">
@@ -145,9 +259,12 @@ export default function ClientDashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Acciones Rápidas</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3 pb-6">
               <Link href="/client/book">
-                <Button className="w-full justify-start" size="lg">
+                <Button
+                  className="w-full justify-start h-auto py-4 px-4"
+                  size="lg"
+                >
                   <Calendar className="mr-3 h-5 w-5" />
                   <div className="flex flex-col items-start">
                     <span className="font-semibold">Reservar Clase</span>
@@ -161,7 +278,7 @@ export default function ClientDashboardPage() {
               <Link href="/client/attendance">
                 <Button
                   variant="outline"
-                  className="w-full justify-start bg-transparent"
+                  className="w-full justify-start bg-transparent h-auto py-4 px-4"
                   size="lg"
                 >
                   <History className="mr-3 h-5 w-5" />
@@ -177,7 +294,7 @@ export default function ClientDashboardPage() {
               <Link href="/client/profile">
                 <Button
                   variant="outline"
-                  className="w-full justify-start bg-transparent"
+                  className="w-full justify-start bg-transparent h-auto py-4 px-4"
                   size="lg"
                 >
                   <User className="mr-3 h-5 w-5" />
